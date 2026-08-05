@@ -55,8 +55,8 @@ Options:
 -sns <int> ............. spatial noise shaping (0:off, 100:max), default=50
 -f <int> ............... filter strength (0=off..100), default=60
 -sharpness <int> ....... filter sharpness (0:most .. 7:least sharp), default=0
--strong ................ use strong filter instead of the default simple filter
--nostrong .............. use simple filter (default) instead of strong
+-strong ................ use strong filter instead of simple (default)
+-nostrong .............. use simple filter instead of strong
 -sharp_yuv ............. use sharper (and slower) RGB->YUV conversion
 -partition_limit <int> . limit quality to fit the 512k limit on
                          the first partition (0=no degradation ... 100=full)

@@ -612,10 +612,8 @@ static void HelpLong(void) {
       "filter sharpness (0:most .. 7:least sharp), default=0\n");
   printf(
       "  -strong ................ use strong filter instead "
-      "of the default simple filter\n");
-  printf(
-      "  -nostrong .............. use simple filter (default) instead of "
-      "strong\n");
+      "of simple (default)\n");
+  printf("  -nostrong .............. use simple filter instead of strong\n");
   printf(
       "  -sharp_yuv ............. use sharper (and slower) RGB->YUV "
       "conversion\n");
