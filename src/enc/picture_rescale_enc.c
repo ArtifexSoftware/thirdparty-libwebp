@@ -12,6 +12,7 @@
 // Author: Skal (pascal.massimino@gmail.com)
 
 #include <assert.h>
+#include <stddef.h>
 #include <stdlib.h>
 
 #include "src/dsp/dsp.h"
@@ -181,8 +182,8 @@ static int RescalePlane(const uint8_t* src, int src_width, int src_height,
     return 0;
   }
   while (y < src_height) {
-    y += WebPRescalerImport(&rescaler, src_height - y, src + y * src_stride,
-                            src_stride);
+    y += WebPRescalerImport(&rescaler, src_height - y,
+                            src + (ptrdiff_t)y * src_stride, src_stride);
     WebPRescalerExport(&rescaler);
   }
   return 1;
