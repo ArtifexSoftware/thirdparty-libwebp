@@ -119,7 +119,7 @@ static void RescalerImportRowShrink_SSE2(WebPRescaler* WEBP_RESTRICT const wrk,
   const __m128i zero = _mm_setzero_si128();
   const __m128i mult0 = _mm_set1_epi16(x_sub);
   const __m128i mult1 = _mm_set1_epi32(wrk->fx_scale);
-  const __m128i rounder = _mm_set_epi32(0, ROUNDER, 0, ROUNDER);
+  const __m128i rounder = _mm_set_epi32(0, (int)ROUNDER, 0, (int)ROUNDER);
   __m128i sum = zero;
   rescaler_t* frow = wrk->frow;
   const rescaler_t* const frow_end = wrk->frow + 4 * wrk->dst_width;
@@ -195,7 +195,7 @@ static WEBP_INLINE void LoadDispatchAndMult_SSE2(
 static WEBP_INLINE void ProcessRow_SSE2(
     const __m128i* const A0, const __m128i* const A1, const __m128i* const A2,
     const __m128i* const A3, const __m128i* const mult, uint8_t* const dst) {
-  const __m128i rounder = _mm_set_epi32(0, ROUNDER, 0, ROUNDER);
+  const __m128i rounder = _mm_set_epi32(0, (int)ROUNDER, 0, (int)ROUNDER);
   const __m128i mask = _mm_set_epi32(~0, 0, ~0, 0);
   const __m128i B0 = _mm_mul_epu32(*A0, *mult);
   const __m128i B1 = _mm_mul_epu32(*A1, *mult);
@@ -229,7 +229,8 @@ static void RescalerExportRowExpand_SSE2(WebPRescaler* const wrk) {
   rescaler_t* const irow = wrk->irow;
   const int x_out_max = wrk->dst_width * wrk->num_channels;
   const rescaler_t* const frow = wrk->frow;
-  const __m128i mult = _mm_set_epi32(0, wrk->fy_scale, 0, wrk->fy_scale);
+  const __m128i mult =
+      _mm_set_epi32(0, (int)wrk->fy_scale, 0, (int)wrk->fy_scale);
 
   assert(!WebPRescalerOutputDone(wrk));
   assert(wrk->y_accum <= 0 && wrk->y_sub + wrk->y_accum >= 0);
@@ -248,9 +249,9 @@ static void RescalerExportRowExpand_SSE2(WebPRescaler* const wrk) {
   } else {
     const uint32_t B = WEBP_RESCALER_FRAC(-wrk->y_accum, wrk->y_sub);
     const uint32_t A = (uint32_t)(WEBP_RESCALER_ONE - B);
-    const __m128i mA = _mm_set_epi32(0, A, 0, A);
-    const __m128i mB = _mm_set_epi32(0, B, 0, B);
-    const __m128i rounder = _mm_set_epi32(0, ROUNDER, 0, ROUNDER);
+    const __m128i mA = _mm_set_epi32(0, (int)A, 0, (int)A);
+    const __m128i mB = _mm_set_epi32(0, (int)B, 0, (int)B);
+    const __m128i rounder = _mm_set_epi32(0, (int)ROUNDER, 0, (int)ROUNDER);
     for (x_out = 0; x_out + 8 <= x_out_max; x_out += 8) {
       __m128i A0, A1, A2, A3, B0, B1, B2, B3;
       LoadDispatchAndMult_SSE2(frow + x_out, &mA, &A0, &A1, &A2, &A3);
@@ -293,7 +294,7 @@ static void RescalerExportRowShrink_SSE2(WebPRescaler* const wrk) {
   if (yscale) {
     const int scale_xy = wrk->fxy_scale;
     const __m128i mult_xy = _mm_set_epi32(0, scale_xy, 0, scale_xy);
-    const __m128i mult_y = _mm_set_epi32(0, yscale, 0, yscale);
+    const __m128i mult_y = _mm_set_epi32(0, (int)yscale, 0, (int)yscale);
     for (x_out = 0; x_out + 8 <= x_out_max; x_out += 8) {
       __m128i A0, A1, A2, A3, B0, B1, B2, B3;
       LoadDispatchAndMult_SSE2(irow + x_out, NULL, &A0, &A1, &A2, &A3);
@@ -324,7 +325,7 @@ static void RescalerExportRowShrink_SSE2(WebPRescaler* const wrk) {
     }
   } else {
     const uint32_t scale = wrk->fxy_scale;
-    const __m128i mult = _mm_set_epi32(0, scale, 0, scale);
+    const __m128i mult = _mm_set_epi32(0, (int)scale, 0, (int)scale);
     const __m128i zero = _mm_setzero_si128();
     for (x_out = 0; x_out + 8 <= x_out_max; x_out += 8) {
       __m128i A0, A1, A2, A3;
