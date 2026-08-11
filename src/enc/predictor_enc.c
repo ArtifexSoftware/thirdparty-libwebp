@@ -652,7 +652,10 @@ static void GetBestPredictorsAndSubSampling(
 
   *best_bits = 0;
   *best_mode = NULL;
-  if (raw_data == NULL) return;
+  if (raw_data == NULL) {
+    WebPEncodingSetError(pic, VP8_ENC_ERROR_OUT_OF_MEMORY);
+    return;
+  }
 
   while (tile_y < tiles_per_col) {
     ComputeResidualsForTile(width, height, tile_x, tile_y, min_bits,
@@ -798,7 +801,9 @@ int VP8LResidualImage(int width, int height, int min_bits, int max_bits,
       sum_num_pixels += num_pixels[bits];
     }
     modes_raw = (uint32_t*)WebPSafeMalloc(sum_num_pixels, sizeof(*modes_raw));
-    if (modes_raw == NULL) return 0;
+    if (modes_raw == NULL) {
+      return WebPEncodingSetError(pic, VP8_ENC_ERROR_OUT_OF_MEMORY);
+    }
     // Have modes point to the right global memory modes_raw.
     modes[min_bits] = modes_raw;
     for (bits = min_bits + 1; bits <= max_bits; ++bits) {
