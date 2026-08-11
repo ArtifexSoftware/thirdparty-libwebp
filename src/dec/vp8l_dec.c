@@ -1509,6 +1509,8 @@ static void VP8LClear(VP8LDecoder* const dec) {
 
   WebPSafeFree(dec->pixels);
   dec->pixels = NULL;
+  dec->argb_cache = NULL;
+  dec->accumulated_rgb_pixels = NULL;
   for (i = 0; i < dec->next_transform; ++i) {
     ClearTransform(&dec->transforms[i]);
   }
@@ -1646,7 +1648,10 @@ static int AllocateInternalBuffers32b(VP8LDecoder* const dec, int final_width) {
   assert(dec->width <= final_width);
   dec->pixels = (uint32_t*)WebPSafeMalloc(total_num_pixels, sizeof(uint32_t));
   if (dec->pixels == NULL) {
-    dec->argb_cache = NULL;  // for soundness
+    // Clear sub-slice pointers derived from dec->pixels to prevent dangling
+    // references.
+    dec->argb_cache = NULL;
+    dec->accumulated_rgb_pixels = NULL;
     return VP8LSetError(dec, VP8_STATUS_OUT_OF_MEMORY);
   }
   dec->argb_cache = dec->pixels + num_pixels + cache_top_pixels;
@@ -1661,7 +1666,10 @@ static int AllocateInternalBuffers32b(VP8LDecoder* const dec, int final_width) {
 
 static int AllocateInternalBuffers8b(VP8LDecoder* const dec) {
   const uint64_t total_num_pixels = (uint64_t)dec->width * dec->height;
-  dec->argb_cache = NULL;  // for soundness
+  // Clear sub-slice pointers derived from dec->pixels to prevent dangling
+  // references.
+  dec->argb_cache = NULL;
+  dec->accumulated_rgb_pixels = NULL;
   dec->pixels = (uint32_t*)WebPSafeMalloc(total_num_pixels, sizeof(uint8_t));
   if (dec->pixels == NULL) {
     return VP8LSetError(dec, VP8_STATUS_OUT_OF_MEMORY);
