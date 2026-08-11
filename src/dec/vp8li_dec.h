@@ -104,8 +104,8 @@ struct ALPHDecoder;  // Defined in dec/alphai.h.
 // in vp8l.c
 
 // Decodes image header for alpha data stored using lossless compression.
-// Returns false in case of error.
-WEBP_NODISCARD int VP8LDecodeAlphaHeader(
+// Returns VP8_STATUS_OK on success, the reason for the failure otherwise.
+WEBP_NODISCARD VP8StatusCode VP8LDecodeAlphaHeader(
     struct ALPHDecoder* const alph_dec,
     const uint8_t* const WEBP_COUNTED_BY(data_size) data, size_t data_size);
 

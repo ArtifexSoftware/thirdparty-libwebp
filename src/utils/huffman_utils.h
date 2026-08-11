@@ -103,8 +103,8 @@ void VP8LHtreeGroupsFree(HTreeGroup* const htree_groups);
 // Builds Huffman lookup table assuming code lengths are in symbol order.
 // The 'code_lengths' is pre-allocated temporary memory buffer used for creating
 // the huffman table.
-// Returns built table size or 0 in case of error (invalid tree or
-// memory error).
+// Returns the built table size, 0 for an invalid tree, or a negative value
+// in case of memory error.
 WEBP_NODISCARD int VP8LBuildHuffmanTable(
     HuffmanTables* const root_table, int root_bits,
     const int WEBP_COUNTED_BY(code_lengths_size) code_lengths[],

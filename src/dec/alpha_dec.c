@@ -51,12 +51,15 @@ static void ALPHDelete(ALPHDecoder* const dec) {
 
 // Initialize alpha decoding by parsing the alpha header and decoding the image
 // header for alpha data stored using lossless compression.
-// Returns false in case of error in alpha header (data too short, invalid
-// compression method or filter, error in lossless header data etc).
-WEBP_NODISCARD static int ALPHInit(ALPHDecoder* const dec, const uint8_t* data,
-                                   size_t data_size, const VP8Io* const src_io,
-                                   uint8_t* output) {
-  int ok = 0;
+// Returns VP8_STATUS_OK on success, the reason for the failure otherwise
+// (data too short, invalid compression method or filter, error in the
+// lossless header data, etc.).
+WEBP_NODISCARD static VP8StatusCode ALPHInit(ALPHDecoder* const dec,
+                                             const uint8_t* data,
+                                             size_t data_size,
+                                             const VP8Io* const src_io,
+                                             uint8_t* output) {
+  VP8StatusCode status;
   const uint8_t* const alpha_data = data + ALPHA_HEADER_LEN;
   int rsrv;
   VP8Io* const io = &dec->io;
@@ -70,7 +73,7 @@ WEBP_NODISCARD static int ALPHInit(ALPHDecoder* const dec, const uint8_t* data,
   assert(dec->width > 0 && dec->height > 0);
 
   if (data_size <= ALPHA_HEADER_LEN) {
-    return 0;
+    return VP8_STATUS_BITSTREAM_ERROR;
   }
 
   dec->method = (data[0] >> 0) & 0x03;
@@ -81,12 +84,12 @@ WEBP_NODISCARD static int ALPHInit(ALPHDecoder* const dec, const uint8_t* data,
       dec->method > ALPHA_LOSSLESS_COMPRESSION ||
       dec->filter >= WEBP_FILTER_LAST ||
       dec->pre_processing > ALPHA_PREPROCESSED_LEVELS || rsrv != 0) {
-    return 0;
+    return VP8_STATUS_BITSTREAM_ERROR;
   }
 
   // Copy the necessary parameters from src_io to io
   if (!VP8InitIo(io)) {
-    return 0;
+    return VP8_STATUS_INVALID_PARAM;
   }
   WebPInitCustomIo(NULL, io);
   io->opaque = dec;
@@ -104,19 +107,22 @@ WEBP_NODISCARD static int ALPHInit(ALPHDecoder* const dec, const uint8_t* data,
     const size_t alpha_data_size = data_size - ALPHA_HEADER_LEN;
     if (dec->method == ALPHA_NO_COMPRESSION) {
       const size_t alpha_decoded_size = dec->width * dec->height;
-      ok = (alpha_data_size >= alpha_decoded_size);
+      status = (alpha_data_size >= alpha_decoded_size)
+                   ? VP8_STATUS_OK
+                   : VP8_STATUS_BITSTREAM_ERROR;
     } else {
       assert(dec->method == ALPHA_LOSSLESS_COMPRESSION);
       {
         const uint8_t* WEBP_BIDI_INDEXABLE const bounded_alpha_data =
             WEBP_UNSAFE_FORGE_BIDI_INDEXABLE(const uint8_t*, alpha_data,
                                              alpha_data_size);
-        ok = VP8LDecodeAlphaHeader(dec, bounded_alpha_data, alpha_data_size);
+        status =
+            VP8LDecodeAlphaHeader(dec, bounded_alpha_data, alpha_data_size);
       }
     }
   }
 
-  return ok;
+  return status;
 }
 
 // Decodes, unfilters and dequantizes *at least* 'num_rows' rows of alpha
@@ -205,14 +211,14 @@ WEBP_NODISCARD const uint8_t* VP8DecompressAlphaRows(VP8Decoder* const dec,
         return NULL;
       }
       if (!AllocateAlphaPlane(dec, io)) goto Error;
-      if (!ALPHInit(dec->alph_dec, dec->alpha_data, dec->alpha_data_size, io,
-                    dec->alpha_plane)) {
-        VP8LDecoder* const vp8l_dec = dec->alph_dec->vp8l_dec;
-        VP8SetError(
-            dec,
-            (vp8l_dec == NULL) ? VP8_STATUS_OUT_OF_MEMORY : vp8l_dec->status,
-            "Alpha decoder initialization failed.");
-        goto Error;
+      {
+        const VP8StatusCode status =
+            ALPHInit(dec->alph_dec, dec->alpha_data, dec->alpha_data_size, io,
+                     dec->alpha_plane);
+        if (status != VP8_STATUS_OK) {
+          VP8SetError(dec, status, "Alpha decoder initialization failed.");
+          goto Error;
+        }
       }
       // if we allowed use of alpha dithering, check whether it's needed at all
       if (dec->alph_dec->pre_processing != ALPHA_PREPROCESSED_LEVELS) {
