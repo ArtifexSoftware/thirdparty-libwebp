@@ -1500,6 +1500,15 @@ VP8LDecoder* VP8LNew(void) {
   return dec;
 }
 
+// Frees dec->pixels along with the sub-slice pointers derived from it, to
+// prevent dangling references.
+static void ClearInternalBuffers(VP8LDecoder* const dec) {
+  WebPSafeFree(dec->pixels);
+  dec->pixels = NULL;
+  dec->argb_cache = NULL;
+  dec->accumulated_rgb_pixels = NULL;
+}
+
 // Resets the decoder in its initial state, reclaiming memory.
 // Preserves the dec->status value.
 static void VP8LClear(VP8LDecoder* const dec) {
@@ -1507,10 +1516,7 @@ static void VP8LClear(VP8LDecoder* const dec) {
   if (dec == NULL) return;
   ClearMetadata(&dec->hdr);
 
-  WebPSafeFree(dec->pixels);
-  dec->pixels = NULL;
-  dec->argb_cache = NULL;
-  dec->accumulated_rgb_pixels = NULL;
+  ClearInternalBuffers(dec);
   for (i = 0; i < dec->next_transform; ++i) {
     ClearTransform(&dec->transforms[i]);
   }
@@ -1648,10 +1654,7 @@ static int AllocateInternalBuffers32b(VP8LDecoder* const dec, int final_width) {
   assert(dec->width <= final_width);
   dec->pixels = (uint32_t*)WebPSafeMalloc(total_num_pixels, sizeof(uint32_t));
   if (dec->pixels == NULL) {
-    // Clear sub-slice pointers derived from dec->pixels to prevent dangling
-    // references.
-    dec->argb_cache = NULL;
-    dec->accumulated_rgb_pixels = NULL;
+    ClearInternalBuffers(dec);
     return VP8LSetError(dec, VP8_STATUS_OUT_OF_MEMORY);
   }
   dec->argb_cache = dec->pixels + num_pixels + cache_top_pixels;
@@ -1666,10 +1669,7 @@ static int AllocateInternalBuffers32b(VP8LDecoder* const dec, int final_width) {
 
 static int AllocateInternalBuffers8b(VP8LDecoder* const dec) {
   const uint64_t total_num_pixels = (uint64_t)dec->width * dec->height;
-  // Clear sub-slice pointers derived from dec->pixels to prevent dangling
-  // references.
-  dec->argb_cache = NULL;
-  dec->accumulated_rgb_pixels = NULL;
+  ClearInternalBuffers(dec);
   dec->pixels = (uint32_t*)WebPSafeMalloc(total_num_pixels, sizeof(uint8_t));
   if (dec->pixels == NULL) {
     return VP8LSetError(dec, VP8_STATUS_OUT_OF_MEMORY);
