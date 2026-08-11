@@ -145,7 +145,13 @@ WEBP_NODISCARD static int ALPHDecode(VP8Decoder* const dec, int row,
   } else {  // alph_dec->method == ALPHA_LOSSLESS_COMPRESSION
     assert(alph_dec->vp8l_dec != NULL);
     if (!VP8LDecodeAlphaImageStream(alph_dec, row + num_rows)) {
-      return 0;
+      // SUSPENDED means truncated, but the ALPH chunk is whole by now.
+      const VP8StatusCode status = alph_dec->vp8l_dec->status;
+      return VP8SetError(dec,
+                         (status == VP8_STATUS_SUSPENDED)
+                             ? VP8_STATUS_BITSTREAM_ERROR
+                             : status,
+                         "Could not decode alpha data.");
     }
   }
 
@@ -239,6 +245,10 @@ WEBP_NODISCARD const uint8_t* VP8DecompressAlphaRows(VP8Decoder* const dec,
         if (!WebPDequantizeLevels(bounded_alpha, io->crop_right - io->crop_left,
                                   io->crop_bottom - io->crop_top, width,
                                   dec->alpha_dithering)) {
+          // Dimensions and strength are checked upstream: only the scratch
+          // buffer can fail.
+          VP8SetError(dec, VP8_STATUS_OUT_OF_MEMORY,
+                      "no memory for alpha dithering.");
           goto Error;
         }
       }

@@ -572,6 +572,7 @@ static int CustomSetup(VP8Io* io) {
   const int is_alpha = WebPIsAlphaMode(colorspace);
 
   p->memory = NULL;
+  p->status = VP8_STATUS_OK;
   p->emit = NULL;
   p->emit_alpha = NULL;
   p->emit_alpha_row = NULL;
@@ -587,6 +588,7 @@ static int CustomSetup(VP8Io* io) {
 #if !defined(WEBP_REDUCE_SIZE)
     const int ok = is_rgb ? InitRGBRescaler(io, p) : InitYUVRescaler(io, p);
     if (!ok) {
+      p->status = VP8_STATUS_OUT_OF_MEMORY;
       return 0;  // memory error
     }
 #else
@@ -601,6 +603,7 @@ static int CustomSetup(VP8Io* io) {
         const int uv_width = (io->mb_w + 1) >> 1;
         p->memory = WebPSafeMalloc(1ULL, (size_t)(io->mb_w + 2 * uv_width));
         if (p->memory == NULL) {
+          p->status = VP8_STATUS_OUT_OF_MEMORY;
           return 0;  // memory error.
         }
         p->tmp_y = (uint8_t*)p->memory;

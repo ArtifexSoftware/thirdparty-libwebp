@@ -472,7 +472,8 @@ static VP8StatusCode DecodePartition0(WebPIDecoder* const idec) {
 
   // Finish setting up the decoding parameters. Will call io->setup().
   if (VP8EnterCritical(dec, io) != VP8_STATUS_OK) {
-    return IDecError(idec, dec->status);
+    return IDecError(
+        idec, (params->status != VP8_STATUS_OK) ? params->status : dec->status);
   }
 
   // Note: past this point, teardown() must always be called

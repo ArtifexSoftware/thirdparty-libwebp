@@ -682,7 +682,10 @@ static int ParseFrame(VP8Decoder* const dec, VP8Io* io) {
     }
   }
   if (dec->mt_method > 0) {
-    if (!WebPGetWorkerInterface()->Sync(&dec->worker)) return 0;
+    // Collect the last row's put(), which may have aborted.
+    if (!WebPGetWorkerInterface()->Sync(&dec->worker)) {
+      return VP8SetError(dec, VP8_STATUS_USER_ABORT, "Output aborted.");
+    }
   }
 
   return 1;
