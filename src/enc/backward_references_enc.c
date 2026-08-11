@@ -588,26 +588,24 @@ static int BackwardReferencesLz77Box(int xsize, int ysize,
                                      VP8LBackwardRefs* const refs) {
   int i;
   const int pix_count = xsize * ysize;
-  uint16_t* counts;
   int window_offsets[WINDOW_OFFSETS_SIZE_MAX] = {0};
   int window_offsets_new[WINDOW_OFFSETS_SIZE_MAX] = {0};
   int window_offsets_size = 0;
   int window_offsets_new_size = 0;
-  uint16_t* const counts_ini =
-      (uint16_t*)WebPSafeMalloc(xsize * ysize, sizeof(*counts_ini));
+  uint16_t* const counts =
+      (uint16_t*)WebPSafeMalloc(pix_count, sizeof(*counts));
   int best_offset_prev = -1, best_length_prev = -1;
-  if (counts_ini == NULL) return 0;
+  if (counts == NULL) return 0;
 
-  // counts[i] counts how many times a pixel is repeated starting at position i.
-  i = pix_count - 2;
-  counts = counts_ini + i;
-  counts[1] = 1;
-  for (; i >= 0; --i, --counts) {
+  // counts[i] counts how many times a pixel is repeated starting at
+  // position i.
+  counts[pix_count - 1] = 1;
+  for (i = pix_count - 2; i >= 0; --i) {
     if (argb[i] == argb[i + 1]) {
       // Max out the counts to MAX_LENGTH.
-      counts[0] = counts[1] + (counts[1] != MAX_LENGTH);
+      counts[i] = counts[i + 1] + (counts[i + 1] != MAX_LENGTH);
     } else {
-      counts[0] = 1;
+      counts[i] = 1;
     }
   }
 
@@ -684,8 +682,8 @@ static int BackwardReferencesLz77Box(int xsize, int ysize,
         // The longest match is the sum of how many times each pixel is
         // repeated.
         do {
-          const int counts_j_offset = counts_ini[j_offset];
-          const int counts_j = counts_ini[j];
+          const int counts_j_offset = counts[j_offset];
+          const int counts_j = counts[j];
           if (counts_j_offset != counts_j) {
             curr_length +=
                 (counts_j_offset < counts_j) ? counts_j_offset : counts_j;
@@ -724,7 +722,7 @@ static int BackwardReferencesLz77Box(int xsize, int ysize,
     }
   }
   hash_chain->offset_length[0] = 0;
-  WebPSafeFree(counts_ini);
+  WebPSafeFree(counts);
 
   return BackwardReferencesLz77(xsize, ysize, argb, cache_bits, hash_chain,
                                 refs);
