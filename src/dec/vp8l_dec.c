@@ -246,7 +246,9 @@ static int ReadHuffmanCodeLengths(VP8LDecoder* const dec,
                                   const int* const code_length_code_lengths,
                                   int num_symbols, int* const code_lengths) {
   int ok = 0;
+  VP8StatusCode status = VP8_STATUS_BITSTREAM_ERROR;
   VP8LBitReader* const br = &dec->br;
+  int size;
   int symbol;
   int max_symbol;
   int prev_code_len = DEFAULT_CODE_LENGTH;
@@ -256,11 +258,14 @@ static int ReadHuffmanCodeLengths(VP8LDecoder* const dec,
           const int*, code_length_code_lengths,
           NUM_CODE_LENGTH_CODES * sizeof(*code_length_code_lengths));
 
-  if (!VP8LHuffmanTablesAllocate(1 << LENGTHS_TABLE_BITS, &tables) ||
-      !VP8LBuildHuffmanTable(&tables, LENGTHS_TABLE_BITS, bounded_code_lengths,
-                             NUM_CODE_LENGTH_CODES)) {
+  if (!VP8LHuffmanTablesAllocate(1 << LENGTHS_TABLE_BITS, &tables)) {
+    status = VP8_STATUS_OUT_OF_MEMORY;
     goto End;
   }
+  size = VP8LBuildHuffmanTable(&tables, LENGTHS_TABLE_BITS,
+                               bounded_code_lengths, NUM_CODE_LENGTH_CODES);
+  if (size < 0) status = VP8_STATUS_OUT_OF_MEMORY;
+  if (size <= 0) goto End;
 
   if (VP8LReadBits(br, 1)) {  // use length
     const int length_nbits = 2 + 2 * VP8LReadBits(br, 3);
@@ -302,7 +307,7 @@ static int ReadHuffmanCodeLengths(VP8LDecoder* const dec,
 
 End:
   VP8LHuffmanTablesDeallocate(&tables);
-  if (!ok) return VP8LSetError(dec, VP8_STATUS_BITSTREAM_ERROR);
+  if (!ok) return VP8LSetError(dec, status);
   return ok;
 }
 
@@ -351,8 +356,9 @@ static int ReadHuffmanCode(int alphabet_size, VP8LDecoder* const dec,
     size = VP8LBuildHuffmanTable(table, HUFFMAN_TABLE_BITS,
                                  bounded_code_lengths, alphabet_size);
   }
-  if (!ok || size == 0) {
-    return VP8LSetError(dec, VP8_STATUS_BITSTREAM_ERROR);
+  if (!ok || size <= 0) {
+    return VP8LSetError(dec, (size < 0) ? VP8_STATUS_OUT_OF_MEMORY
+                                        : VP8_STATUS_BITSTREAM_ERROR);
   }
   return size;
 }
@@ -1712,13 +1718,14 @@ static void ExtractAlphaRows(VP8LDecoder* const dec, int last_row,
   dec->last_row = dec->last_out_row = last_row;
 }
 
-int VP8LDecodeAlphaHeader(ALPHDecoder* const alph_dec,
-                          const uint8_t* const WEBP_COUNTED_BY(data_size) data,
-                          size_t data_size) {
+VP8StatusCode VP8LDecodeAlphaHeader(
+    ALPHDecoder* const alph_dec,
+    const uint8_t* const WEBP_COUNTED_BY(data_size) data, size_t data_size) {
+  VP8StatusCode status;
   int ok = 0;
   VP8LDecoder* dec = VP8LNew();
 
-  if (dec == NULL) return 0;
+  if (dec == NULL) return VP8_STATUS_OUT_OF_MEMORY;
 
   assert(alph_dec != NULL);
 
@@ -1755,11 +1762,14 @@ int VP8LDecodeAlphaHeader(ALPHDecoder* const alph_dec,
 
   // Only set here, once we are sure it is valid (to avoid thread races).
   alph_dec->vp8l_dec = dec;
-  return 1;
+  return VP8_STATUS_OK;
 
 Err:
+  // The whole ALPH chunk is available, so SUSPENDED means a truncated stream.
+  status = (dec->status == VP8_STATUS_SUSPENDED) ? VP8_STATUS_BITSTREAM_ERROR
+                                                 : dec->status;
   VP8LDelete(dec);
-  return 0;
+  return status;
 }
 
 int VP8LDecodeAlphaImageStream(ALPHDecoder* const alph_dec, int last_row) {

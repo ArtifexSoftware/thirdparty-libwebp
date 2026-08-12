@@ -249,7 +249,7 @@ int VP8LBuildHuffmanTable(HuffmanTables* const root_table, int root_bits,
     const int segment_size = root_table->curr_segment->size;
     struct HuffmanTablesSegment* next =
         (HuffmanTablesSegment*)WebPSafeMalloc(1, sizeof(*next));
-    if (next == NULL) return 0;
+    if (next == NULL) return -1;
     // Fill the new segment.
     // We need at least 'total_size' but if that value is small, it is better to
     // allocate a big chunk to prevent more allocations later. 'segment_size' is
@@ -261,7 +261,7 @@ int VP8LBuildHuffmanTable(HuffmanTables* const root_table, int root_bits,
           (HuffmanCode*)WebPSafeMalloc(next_size, sizeof(*next_start));
       if (next_start == NULL) {
         WebPSafeFree(next);
-        return 0;
+        return -1;
       }
       next->size = next_size;
       next->start = next_start;
@@ -283,7 +283,7 @@ int VP8LBuildHuffmanTable(HuffmanTables* const root_table, int root_bits,
   } else {  // rare case. Use heap allocation.
     uint16_t* const sorted =
         (uint16_t*)WebPSafeMalloc(code_lengths_size, sizeof(*sorted));
-    if (sorted == NULL) return 0;
+    if (sorted == NULL) return -1;
     BuildHuffmanTable(
         WEBP_UNSAFE_FORGE_BIDI_INDEXABLE(
             HuffmanCode*, root_table->curr_segment->curr_table,
