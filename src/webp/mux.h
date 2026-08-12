@@ -172,6 +172,11 @@ WEBP_EXTERN WebPMuxError WebPMuxSetChunk(WebPMux* mux, const char fourcc[4],
 
 // Gets a reference to the data of the chunk with id 'fourcc' in the mux object.
 // The caller should NOT free the returned data.
+// The returned reference points to storage owned by 'mux' and is only valid
+// until the next call that modifies 'mux' or until WebPMuxDelete(). In
+// particular, it must not be passed back to WebPMuxSetChunk() for any value of
+// 'copy_data': that call deletes any existing chunk with the same 'fourcc',
+// releasing the referenced storage, before storing the new data.
 // Parameters:
 //   mux - (in) object from which the chunk data is to be fetched
 //   fourcc - (in) a character array containing the fourcc of the chunk;
@@ -561,6 +566,11 @@ WEBP_EXTERN WebPMuxError WebPAnimEncoderSetChunk(WebPAnimEncoder* enc,
 
 // Gets a reference to the data of the chunk with id 'fourcc' in the enc object.
 // The caller should NOT free the returned data.
+// The returned reference points to storage owned by 'enc' and is only valid
+// until the next call that modifies 'enc' or until WebPAnimEncoderDelete(). In
+// particular, it must not be passed back to WebPAnimEncoderSetChunk() for any
+// value of 'copy_data': that call deletes any existing chunk with the same
+// 'fourcc', releasing the referenced storage, before storing the new data.
 // Parameters:
 //   enc - (in) object from which the chunk data is to be fetched
 //   fourcc - (in) a character array containing the fourcc of the chunk;
