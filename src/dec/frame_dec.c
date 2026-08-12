@@ -566,6 +566,7 @@ int VP8ProcessRow(VP8Decoder* const dec, VP8Io* const io) {
 VP8StatusCode VP8EnterCritical(VP8Decoder* const dec, VP8Io* const io) {
   // Call setup() first. This may trigger additional decoding features on 'io'.
   // Note: Afterward, we must call teardown() no matter what.
+  // A more precise reason is reported in WebPDecParams::status.
   if (io->setup != NULL && !io->setup(io)) {
     VP8SetError(dec, VP8_STATUS_INVALID_PARAM, "Frame setup failed");
     return dec->status;
@@ -619,6 +620,7 @@ int VP8ExitCritical(VP8Decoder* const dec, VP8Io* const io) {
   int ok = 1;
   if (dec->mt_method > 0) {
     ok = WebPGetWorkerInterface()->Sync(&dec->worker);
+    if (!ok) VP8SetError(dec, VP8_STATUS_USER_ABORT, "Output aborted.");
   }
 
   if (io->teardown != NULL) {
@@ -723,7 +725,10 @@ static int AllocateMemory(VP8Decoder* const dec) {
                           cache_size + alpha_size + WEBP_ALIGN_CST;
   uint8_t* mem;
 
-  if (!CheckSizeOverflow(needed)) return 0;  // check for overflow
+  if (!CheckSizeOverflow(needed)) {
+    return VP8SetError(dec, VP8_STATUS_OUT_OF_MEMORY,
+                       "frame memory size overflow.");
+  }
   if (needed > dec->mem_size) {
     WebPSafeFree(dec->mem);
     dec->mem_size = 0;

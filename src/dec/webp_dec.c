@@ -513,7 +513,8 @@ WEBP_NODISCARD static VP8StatusCode DecodeInto(
             VP8GetThreadMethod(params->options, &headers, io.width, io.height);
         VP8InitDithering(params->options, dec);
         if (!VP8Decode(dec, &io)) {
-          status = dec->status;
+          status =
+              (params->status != VP8_STATUS_OK) ? params->status : dec->status;
         }
       }
     }
