@@ -712,9 +712,10 @@ static int AllocateMemory(VP8Decoder* const dec) {
   const size_t yuv_size = YUV_SIZE * sizeof(*dec->yuv_b);
   const size_t mb_data_size =
       (dec->mt_method == 2 ? 2 : 1) * mb_w * sizeof(*dec->mb_data);
+  const int cache_y_stride = 16 * mb_w;
   const size_t cache_height =
       (16 * num_caches + kFilterExtraRows[dec->filter_type]) * 3 / 2;
-  const size_t cache_size = top_size * cache_height;
+  const size_t cache_size = (size_t)cache_y_stride * cache_height;
   // alpha_size is the only one that scales as width x height.
   const uint64_t alpha_size =
       (dec->alpha_data != NULL)
@@ -774,7 +775,7 @@ static int AllocateMemory(VP8Decoder* const dec) {
   }
   mem += mb_data_size;
 
-  dec->cache_y_stride = 16 * mb_w;
+  dec->cache_y_stride = cache_y_stride;
   dec->cache_uv_stride = 8 * mb_w;
   {
     const int extra_rows = kFilterExtraRows[dec->filter_type];
