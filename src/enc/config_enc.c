@@ -117,8 +117,8 @@ int WebPValidateConfig(const WebPConfig* config) {
   if (config->preprocessing < 0 || config->preprocessing > 7) return 0;
   if (config->partitions < 0 || config->partitions > 3) return 0;
   if (config->partition_limit < 0 || config->partition_limit > 100) return 0;
-  if (config->alpha_compression < 0) return 0;
-  if (config->alpha_filtering < 0) return 0;
+  if (config->alpha_compression < 0 || config->alpha_compression > 1) return 0;
+  if (config->alpha_filtering < 0 || config->alpha_filtering > 2) return 0;
   if (config->alpha_quality < 0 || config->alpha_quality > 100) return 0;
   if (config->lossless < 0 || config->lossless > 1) return 0;
   if (config->near_lossless < 0 || config->near_lossless > 100) return 0;
