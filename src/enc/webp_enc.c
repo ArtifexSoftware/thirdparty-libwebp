@@ -303,9 +303,8 @@ static void StoreStats(VP8Encoder* const enc) {
       stats->block_count[i] = enc->block_count[i];
     }
   }
-#else   // defined(WEBP_DISABLE_STATS)
-  WebPReportProgress(enc->pic, 100, &enc->percent);  // done!
 #endif  // !defined(WEBP_DISABLE_STATS)
+  WebPReportProgress(enc->pic, 100, &enc->percent);  // done!
 }
 
 int WebPEncodingSetError(const WebPPicture* const pic,

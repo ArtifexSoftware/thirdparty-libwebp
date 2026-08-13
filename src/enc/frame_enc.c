@@ -758,7 +758,7 @@ int VP8EncLoop(VP8Encoder* const enc) {
   int ok = PreLoopInitialize(enc);
   if (!ok) return 0;
 
-  StatLoop(enc);  // stats-collection loop
+  if (!StatLoop(enc)) return 0;  // stats-collection loop
 
   VP8IteratorInit(enc, &it);
   VP8InitFilter(&it);
