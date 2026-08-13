@@ -257,7 +257,7 @@ int WebPPictureRescale(WebPPicture* picture, int width, int height) {
   } else {
     work = (rescaler_t*)WebPSafeMalloc(2ULL * width * 4, sizeof(*work));
     if (work == NULL) {
-      status = VP8_ENC_ERROR_BAD_DIMENSION;
+      status = VP8_ENC_ERROR_OUT_OF_MEMORY;
       goto Cleanup;
     }
     // In order to correctly interpolate colors, we need to apply the alpha
