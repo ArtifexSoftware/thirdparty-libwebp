@@ -41,7 +41,8 @@ typedef enum { LITERAL = 0, RED, BLUE, ALPHA, DISTANCE } HistogramIndex;
 // Return the size of the histogram for a given cache_bits.
 static int GetHistogramSize(int cache_bits) {
   const int literal_size = VP8LHistogramNumCodes(cache_bits);
-  const size_t total_size = sizeof(VP8LHistogram) + sizeof(int) * literal_size;
+  const size_t total_size =
+      sizeof(VP8LHistogram) + sizeof(uint32_t) * literal_size;
   assert(total_size <= (size_t)0x7fffffff);
   return (int)total_size;
 }
@@ -691,7 +692,8 @@ static void HistogramCombineEntropyBin(VP8LHistogramSet* const image_histo,
   int idx;
   struct {
     int16_t first;  // position of the histogram that accumulates all
-                    // histograms with the same bin_id
+                    // histograms with the same bin_id. At most 32x32 of
+                    // them, cf. ClampBits().
     uint16_t num_combine_failures;  // number of combine failures per bin_id
   } bin_info[BIN_SIZE];
 
@@ -909,6 +911,7 @@ static int HistogramCombineGreedy(VP8LHistogramSet* const image_histo) {
   // - image_histo_size - 1 in the last for loop at the first iteration of
   //   the while loop, image_histo_size - 2 at the second iteration ...
   //   therefore image_histo_size*(image_histo_size-1)/2 overall too
+  assert(image_histo_size <= MAX_HISTO_GREEDY);
   if (!HistoQueueInit(&histo_queue, image_histo_size * image_histo_size)) {
     goto End;
   }
@@ -989,7 +992,7 @@ static int HistogramCombineStochastic(VP8LHistogramSet* const image_histo,
        ++iter) {
     int64_t best_cost =
         (histo_queue.size == 0) ? 0 : histo_queue.queue[0].cost_diff;
-    int best_idx1 = -1, best_idx2 = 1;
+    int best_idx1, best_idx2;
     const uint32_t rand_range = (image_histo->size - 1) * (image_histo->size);
     // (image_histo->size) / 2 was chosen empirically. Less means faster but
     // worse compression.
@@ -1083,6 +1086,8 @@ static void HistogramRemap(const VP8LHistogramSet* const in,
       int k;
       if (in_histo[i] == NULL) {
         // Arbitrarily set to the previous value if unused to help future LZ77.
+        // in_histo[0] is always used, cf. HistogramCopyAndAnalyze()
+        assert(i > 0);
         symbols[i] = symbols[i - 1];
         continue;
       }
