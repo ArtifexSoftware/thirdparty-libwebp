@@ -59,7 +59,8 @@ static int EncodeLossless(const uint8_t* const data, int width, int height,
   WebPConfig config;
   WebPPicture picture;
 
-  if (!WebPPictureInit(&picture)) return 0;
+  // Both are ABI version checks: do them before allocating.
+  if (!WebPPictureInit(&picture) || !WebPConfigInit(&config)) return 0;
   picture.width = width;
   picture.height = height;
   picture.use_argb = 1;
@@ -70,7 +71,6 @@ static int EncodeLossless(const uint8_t* const data, int width, int height,
   WebPDispatchAlphaToGreen(data, width, picture.width, picture.height,
                            picture.argb, picture.argb_stride);
 
-  if (!WebPConfigInit(&config)) return 0;
   config.lossless = 1;
   // Enable exact, or it would alter RGB values of transparent alpha, which is
   // normally OK but not here since we are not encoding the input image but  an
