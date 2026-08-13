@@ -694,7 +694,8 @@ static int StatLoop(VP8Encoder* const enc) {
 
 static const uint8_t kAverageBytesPerMB[8] = {50, 24, 16, 9, 7, 5, 3, 2};
 
-static int PreLoopInitialize(VP8Encoder* const enc) {
+// Uses 'base_quant' -> must be called after VP8SetSegmentParams().
+static int InitBitWriters(VP8Encoder* const enc) {
   int p;
   int ok = 1;
   const int average_bytes_per_MB = kAverageBytesPerMB[enc->base_quant >> 4];
@@ -755,10 +756,10 @@ static void ResetAfterSkip(VP8EncIterator* const it) {
 
 int VP8EncLoop(VP8Encoder* const enc) {
   VP8EncIterator it;
-  int ok = PreLoopInitialize(enc);
-  if (!ok) return 0;
+  int ok = 1;
 
   if (!StatLoop(enc)) return 0;  // stats-collection loop
+  if (!InitBitWriters(enc)) return 0;
 
   VP8IteratorInit(enc, &it);
   VP8InitFilter(&it);
@@ -808,11 +809,9 @@ int VP8EncTokenLoop(VP8Encoder* const enc) {
   const VP8RDLevel rd_opt = enc->rd_opt_level;
   const uint64_t pixel_count = (uint64_t)enc->mb_w * enc->mb_h * 384;
   PassStats stats;
-  int ok;
+  int ok = 1;
 
   InitPassStats(enc, &stats);
-  ok = PreLoopInitialize(enc);
-  if (!ok) return 0;
 
   if (max_count < MIN_COUNT) max_count = MIN_COUNT;
 
@@ -902,8 +901,9 @@ int VP8EncTokenLoop(VP8Encoder* const enc) {
     if (!stats.do_size_search) {
       FinalizeTokenProbas(&enc->proba);
     }
-    ok = VP8EmitTokens(&enc->tokens, enc->parts + 0,
-                       (const uint8_t*)proba->coeffs, 1);
+    // writer only needed now, when 'base_quant' is final
+    ok = InitBitWriters(enc) && VP8EmitTokens(&enc->tokens, enc->parts + 0,
+                                              (const uint8_t*)proba->coeffs, 1);
   }
   ok = ok && WebPReportProgress(enc->pic, enc->percent + remaining_progress,
                                 &enc->percent);
