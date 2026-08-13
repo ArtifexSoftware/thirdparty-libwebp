@@ -278,7 +278,7 @@ void VP8IteratorBytesToNz(VP8EncIterator* const it) {
   nz |= (top_nz[4] << 18) | (top_nz[5] << 19);
   nz |= (top_nz[6] << 22) | (top_nz[7] << 23);
   nz |= (top_nz[8] << 24);  // we propagate the _top_ bit, esp. for intra4
-  // left
+  // left. left_nz[3], [5] and [7] are already set, as top_nz[3], [5], [7].
   nz |= (left_nz[0] << 3) | (left_nz[1] << 7);
   nz |= (left_nz[2] << 11);
   nz |= (left_nz[4] << 17) | (left_nz[6] << 21);
