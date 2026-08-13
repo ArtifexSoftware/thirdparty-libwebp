@@ -127,11 +127,6 @@ int WebPPictureAllocYUVA(WebPPicture* const picture) {
 
   total_size = y_size + a_size + 2 * uv_size;
 
-  // Security and validation checks
-  if (width <= 0 || height <= 0 ||        // luma/alpha param error
-      uv_width <= 0 || uv_height <= 0) {  // u/v param error
-    return WebPEncodingSetError(picture, VP8_ENC_ERROR_BAD_DIMENSION);
-  }
   // allocate a new buffer.
   mem = (uint8_t*)WebPSafeMalloc(total_size, sizeof(*mem));
   if (mem == NULL) {
