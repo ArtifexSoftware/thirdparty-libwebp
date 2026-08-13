@@ -385,7 +385,7 @@ static int CompressAlphaJob(void* arg1, void* unused) {
   }
   if (alpha_size != (uint32_t)alpha_size) {  // Soundness check.
     WebPSafeFree(alpha_data);
-    return 0;
+    return WebPEncodingSetError(enc->pic, VP8_ENC_ERROR_FILE_TOO_BIG);
   }
   enc->alpha_data_size = (uint32_t)alpha_size;
   enc->alpha_data = alpha_data;
