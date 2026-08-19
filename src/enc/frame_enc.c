@@ -584,11 +584,14 @@ static void SetLoopParams(VP8Encoder* const enc, float q) {
   ResetSSE(enc);
 }
 
-static uint64_t OneStatPass(VP8Encoder* const enc, VP8RDLevel rd_opt,
-                            int nb_mbs, int percent_delta, PassStats* const s) {
+// Returns false if user aborted. '*size_p0' is partition #0's estimated size,
+// legitimately 0 with RD_OPT_NONE.
+static int OneStatPass(VP8Encoder* const enc, VP8RDLevel rd_opt, int nb_mbs,
+                       int percent_delta, PassStats* const s,
+                       uint64_t* const size_p0) {
   VP8EncIterator it;
   uint64_t size = 0;
-  uint64_t size_p0 = 0;
+  uint64_t p0 = 0;
   uint64_t distortion = 0;
   const uint64_t pixel_count = (uint64_t)nb_mbs * 384;
 
@@ -603,7 +606,7 @@ static uint64_t OneStatPass(VP8Encoder* const enc, VP8RDLevel rd_opt,
     }
     RecordResiduals(&it, &info);
     size += info.R + info.H;
-    size_p0 += info.H;
+    p0 += info.H;
     distortion += info.D;
     if (percent_delta && !VP8IteratorProgress(&it, percent_delta)) {
       return 0;
@@ -611,16 +614,17 @@ static uint64_t OneStatPass(VP8Encoder* const enc, VP8RDLevel rd_opt,
     VP8IteratorSaveBoundary(&it);
   } while (VP8IteratorNext(&it) && --nb_mbs > 0);
 
-  size_p0 += enc->segment_hdr.size;
+  p0 += enc->segment_hdr.size;
   if (s->do_size_search) {
     size += FinalizeSkipProba(enc);
     size += FinalizeTokenProbas(&enc->proba);
-    size = ((size + size_p0 + 1024) >> 11) + HEADER_SIZE_ESTIMATE;
+    size = ((size + p0 + 1024) >> 11) + HEADER_SIZE_ESTIMATE;
     s->value = (double)size;
   } else {
     s->value = GetPSNR(distortion, pixel_count);
   }
-  return size_p0;
+  *size_p0 = p0;
+  return 1;
 }
 
 static int StatLoop(VP8Encoder* const enc) {
@@ -653,9 +657,10 @@ static int StatLoop(VP8Encoder* const enc) {
     const int is_last_pass = (fabs(stats.dq) <= DQ_LIMIT) ||
                              (num_pass_left == 0) ||
                              (enc->max_i4_header_bits == 0);
-    const uint64_t size_p0 =
-        OneStatPass(enc, rd_opt, nb_mbs, percent_per_pass, &stats);
-    if (size_p0 == 0) return 0;
+    uint64_t size_p0;
+    if (!OneStatPass(enc, rd_opt, nb_mbs, percent_per_pass, &stats, &size_p0)) {
+      return 0;
+    }
 #if (DEBUG_SEARCH > 0)
     printf("#%d value:%.1lf -> %.1lf   q:%.2f -> %.2f\n", num_pass_left,
            stats.last_value, stats.value, stats.last_q, stats.q);
@@ -689,7 +694,8 @@ static int StatLoop(VP8Encoder* const enc) {
 
 static const uint8_t kAverageBytesPerMB[8] = {50, 24, 16, 9, 7, 5, 3, 2};
 
-static int PreLoopInitialize(VP8Encoder* const enc) {
+// Uses 'base_quant' -> must be called after VP8SetSegmentParams().
+static int InitBitWriters(VP8Encoder* const enc) {
   int p;
   int ok = 1;
   const int average_bytes_per_MB = kAverageBytesPerMB[enc->base_quant >> 4];
@@ -750,10 +756,10 @@ static void ResetAfterSkip(VP8EncIterator* const it) {
 
 int VP8EncLoop(VP8Encoder* const enc) {
   VP8EncIterator it;
-  int ok = PreLoopInitialize(enc);
-  if (!ok) return 0;
+  int ok = 1;
 
-  StatLoop(enc);  // stats-collection loop
+  if (!StatLoop(enc)) return 0;  // stats-collection loop
+  if (!InitBitWriters(enc)) return 0;
 
   VP8IteratorInit(enc, &it);
   VP8InitFilter(&it);
@@ -803,11 +809,9 @@ int VP8EncTokenLoop(VP8Encoder* const enc) {
   const VP8RDLevel rd_opt = enc->rd_opt_level;
   const uint64_t pixel_count = (uint64_t)enc->mb_w * enc->mb_h * 384;
   PassStats stats;
-  int ok;
+  int ok = 1;
 
   InitPassStats(enc, &stats);
-  ok = PreLoopInitialize(enc);
-  if (!ok) return 0;
 
   if (max_count < MIN_COUNT) max_count = MIN_COUNT;
 
@@ -897,8 +901,9 @@ int VP8EncTokenLoop(VP8Encoder* const enc) {
     if (!stats.do_size_search) {
       FinalizeTokenProbas(&enc->proba);
     }
-    ok = VP8EmitTokens(&enc->tokens, enc->parts + 0,
-                       (const uint8_t*)proba->coeffs, 1);
+    // writer only needed now, when 'base_quant' is final
+    ok = InitBitWriters(enc) && VP8EmitTokens(&enc->tokens, enc->parts + 0,
+                                              (const uint8_t*)proba->coeffs, 1);
   }
   ok = ok && WebPReportProgress(enc->pic, enc->percent + remaining_progress,
                                 &enc->percent);
